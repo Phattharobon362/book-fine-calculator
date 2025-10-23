@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบคำนวณค่าปรับคืนหนังสือ</title>
+  <style>
+    body {
+      font-family: "Tahoma", sans-serif;
+      margin: 20px;
+      background-color: #f4faff;
+    }
+    h2 {
+      text-align: center;
+      color: #006699;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #e6f7ff;
+    }
+    input[type="file"] {
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>ระบบคำนวณค่าปรับการคืนหนังสือล่าช้า</h2>
+
+  <p>📁 เลือกไฟล์ JSON ที่มีข้อมูลการยืมคืนหนังสือ:</p>
+  <input type="file" id="jsonFile" accept=".json">
+
+  <table id="fineTable">
+    <thead>
+      <tr>
+        <th>ลำดับ</th>
+        <th>ชื่อหนังสือ</th>
+        <th>ผู้ยืม</th>
+        <th>กำหนดคืน</th>
+        <th>วันที่คืนจริง</th>
+        <th>ค่าปรับต่อวัน (บาท)</th>
+        <th>จำนวนวันเกิน</th>
+        <th>ค่าปรับรวม (บาท)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // เมื่อผู้ใช้เลือกไฟล์ JSON
+    document.getElementById("jsonFile").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          calculateFine(data);
+        } catch (err) {
+          alert("❌ ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ JSON ที่ถูกต้อง");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ฟังก์ชันคำนวณค่าปรับ
+    function calculateFine(data) {
+      const tbody = document.querySelector("#fineTable tbody");
+      tbody.innerHTML = "";
+
+      data.forEach((item) => {
+        const dueDate = new Date(item["กำหนดคืน"]);
+        const returnDate = new Date(item["วันที่คืนจริง"]);
+        const finePerDay = parseFloat(item["ค่าปรับต่อวัน (บาท)"]) || 0;
+
+        const diffDays = Math.ceil((returnDate - dueDate) / (1000 * 60 * 60 * 24));
+        const overdueDays = diffDays > 0 ? diffDays : 0;
+        const totalFine = overdueDays * finePerDay;
+
+        const row = `
+          <tr>
+            <td>${item["ลำดับ"]}</td>
+            <td>${item["ชื่อหนังสือ"]}</td>
+            <td>${item["ผู้ยืม"]}</td>
+            <td>${item["กำหนดคืน"]}</td>
+            <td>${item["วันที่คืนจริง"]}</td>
+            <td>${finePerDay.toFixed(2)}</td>
+            <td>${overdueDays}</td>
+            <td>${totalFine.toFixed(2)}</td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML("beforeend", row);
+      });
+    }
+  </script>
+</body>
+</html>
