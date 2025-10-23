@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบคำนวณค่าปรับคืนหนังสือ</title>
+  <title>ระบบคำนวณค่าปรับคืนหนังสือ (Excel)</title>
   <style>
     body {
       font-family: "Tahoma", sans-serif;
@@ -33,10 +33,9 @@
   </style>
 </head>
 <body>
-  <h2>ระบบคำนวณค่าปรับการคืนหนังสือล่าช้า</h2>
-
-  <p>📁 เลือกไฟล์ JSON ที่มีข้อมูลการยืมคืนหนังสือ:</p>
-  <input type="file" id="jsonFile" accept=".json">
+  <h2>ระบบคำนวณค่าปรับการคืนหนังสือล่าช้า (จากไฟล์ Excel)</h2>
+  <p>📁 เลือกไฟล์ Excel (.xlsx) ที่มีข้อมูลการยืมคืนหนังสือ:</p>
+  <input type="file" id="excelFile" accept=".xlsx">
 
   <table id="fineTable">
     <thead>
@@ -54,41 +53,41 @@
     <tbody></tbody>
   </table>
 
+  <!-- โหลดไลบรารี SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <script>
-    // เมื่อผู้ใช้เลือกไฟล์ JSON
-    document.getElementById("jsonFile").addEventListener("change", function (event) {
+    document.getElementById("excelFile").addEventListener("change", function (event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function (e) {
-        try {
-          const data = JSON.parse(e.target.result);
-          calculateFine(data);
-        } catch (err) {
-          alert("❌ ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ JSON ที่ถูกต้อง");
-        }
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        calculateFine(jsonData);
       };
-      reader.readAsText(file);
+      reader.readAsArrayBuffer(file);
     });
 
-    // ฟังก์ชันคำนวณค่าปรับ
     function calculateFine(data) {
       const tbody = document.querySelector("#fineTable tbody");
       tbody.innerHTML = "";
 
-      data.forEach((item) => {
+      data.forEach((item, index) => {
         const dueDate = new Date(item["กำหนดคืน"]);
         const returnDate = new Date(item["วันที่คืนจริง"]);
         const finePerDay = parseFloat(item["ค่าปรับต่อวัน (บาท)"]) || 0;
-
         const diffDays = Math.ceil((returnDate - dueDate) / (1000 * 60 * 60 * 24));
         const overdueDays = diffDays > 0 ? diffDays : 0;
         const totalFine = overdueDays * finePerDay;
 
         const row = `
           <tr>
-            <td>${item["ลำดับ"]}</td>
+            <td>${item["ลำดับ"] || index + 1}</td>
             <td>${item["ชื่อหนังสือ"]}</td>
             <td>${item["ผู้ยืม"]}</td>
             <td>${item["กำหนดคืน"]}</td>
